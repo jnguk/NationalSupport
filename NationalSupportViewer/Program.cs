@@ -1,12 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
+using System.Threading;
 
 namespace NationalSupportViewer
 {
     public static class Program
     {
+        private const int CoreCount   = 10;
+        private const int ItemPerPage = 10;
+
+        //sido_sgg: 시군구
+        //ldongCod: 읍면동
+        //zmap_ctgry_code: STEP3
+
         private static string XmlHttpRequest(string url, string content)
         {
             HttpWebRequest rq   = null;
@@ -60,7 +69,25 @@ namespace NationalSupportViewer
 
         private static void Main()
         {
-            var zipNo = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtZipNo.do", "{\"sido_sgg\":44133,\"ldongCod\":104,\"zmap_ctgry_code\":1,\"mcht_nm\":\"\",\"pageNo\":1,\"pageSet\":10}");
+            string code;
+            do
+            {
+                Console.Write("법정동코드 입력: ");
+                code = Console.ReadLine();
+            } while (code == null);
+
+            Console.WriteLine("\n");
+
+            string zipNo = null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                zipNo = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtZipNo.do", $"{{\"sido_sgg\":{code[0..5]},\"ldongCod\":{code[5..8]},\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":1,\"pageSet\":10}}");
+
+                if (zipNo != null) break;
+            }
+
+            if (zipNo == null) return;
 
             var temp = zipNo.Split(":\"");
             var zipn = new string[temp.Length];
@@ -81,15 +108,64 @@ namespace NationalSupportViewer
             rslt.Remove(rslt.Length - 1, 1);
             rslt.Append(']');
 
-            var count = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtCnt.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\"}}");
+            var countData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtCnt.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\"}}");
+            var count     = int.Parse(countData);
 
-            for (int i = 1; i < (int.Parse(count) / 10) + 1; i++)
+            //LoadSingle(count, rslt);
+            LoadMulti(count, rslt);
+        }
+
+        private static void LoadMulti(int count, StringBuilder rslt)
+        {
+            var thr       = new Thread[CoreCount];
+            var pageCount = count / ItemPerPage;
+
+            var ttemp = (double)pageCount / CoreCount;
+
+            for (var i = 0; i < thr.Length; i++)
             {
-                var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{i}\",\"pageSet\":\"10\"}}");
+                var i1 = i;
+                thr[i] = new Thread(() =>
+                {
+                    for (int j = (int)(ttemp * i1) + 1; j < (int)(ttemp * (i1 + 1)) + 1; j++)
+                    {
+                        var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
 
-                Console.WriteLine($"이름    : {tmp.Split("mcht_nm\":\"")[1].Split('"')[0]}\n"       +
-                                  $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[1].Split('"')[0]}\n" +
-                                  $"주소    : {tmp.Split("mcht_addr\":\"")[1].Split('"')[0]}\n");
+                        for (int k = 0; k < ItemPerPage; k++)
+                        {
+                            Console.WriteLine($"이름    : {tmp.Split("mcht_nm\":\"")[k     + 1].Split('"')[0]}\n" +
+                                              $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[k + 1].Split('"')[0]}\n" +
+                                              $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n");
+                        }
+                    }
+                });
+            }
+
+            foreach (var thread in thr)
+            {
+                thread.Start();
+            }
+
+            foreach (var thread in thr)
+            {
+                thread.Join();
+            }
+        }
+
+        private static void LoadSingle(int count, StringBuilder rslt)
+        {
+            var pageCount = count / ItemPerPage;
+
+            for (int j = 1; j < pageCount; j++)
+            {
+                var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
+
+                for (int k = 0; k < ItemPerPage; k++)
+                {
+                    Console.WriteLine($"이름    : {tmp.Split("mcht_nm\":\"")[k     + 1].Split('"')[0]}\n" +
+                                      $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[k + 1].Split('"')[0]}\n" +
+                                      $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n");
+                }
             }
         }
     }
