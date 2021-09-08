@@ -80,7 +80,20 @@ namespace NationalSupportViewer
                 Console.WriteLine("\n");
             } while (legalLocalCode == null || !double.TryParse(legalLocalCode, out _));
 
-            var zipCode = GetZipData(legalLocalCode);
+            string zipCode = null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                zipCode = GetZipData(legalLocalCode);
+                if (zipCode != null) break;
+            }
+
+            if (zipCode == null)
+            {
+                Console.WriteLine("해당 법정동코드의 지역 번호를 가져올 수 없습니다.");
+                return;
+            }
+
             var countData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtCnt.do",
                                            $"{{\"zip_no\":\"{zipCode}\","
                                            + "\"zmap_ctgry_code\":\"00\","
