@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -114,12 +115,14 @@ namespace NationalSupportViewer
             LoadMulti(count, rslt);
         }
 
-        private static void LoadMulti(int count, StringBuilder rslt)
+        private static void LoadMulti(int count, StringBuilder zipNo)
         {
             var thr       = new Thread[CoreCount];
             var pageCount = count / ItemPerPage;
 
             var ttemp = (double)pageCount / CoreCount;
+
+            var result = new StringBuilder();
 
             for (var i = 0; i < thr.Length; i++)
             {
@@ -128,13 +131,16 @@ namespace NationalSupportViewer
                 {
                     for (int j = (int)(ttemp * i1) + 1; j < (int)(ttemp * (i1 + 1)) + 1; j++)
                     {
-                        var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
+                        var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{zipNo}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
 
                         for (int k = 0; k < ItemPerPage; k++)
                         {
-                            Console.WriteLine($"이름    : {tmp.Split("mcht_nm\":\"")[k     + 1].Split('"')[0]}\n" +
-                                              $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[k + 1].Split('"')[0]}\n" +
-                                              $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n");
+                            var text = $"이름    : {tmp.Split("mcht_nm\":\"")[k     + 1].Split('"')[0]}\n" +
+                                       $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[k + 1].Split('"')[0]}\n" +
+                                       $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n";
+
+                            Console.WriteLine(text);
+                            result.Append(text);
                         }
                     }
                 });
@@ -149,6 +155,8 @@ namespace NationalSupportViewer
             {
                 thread.Join();
             }
+
+            File.WriteAllText("result.txt", result.ToString());
         }
 
         private static void LoadSingle(int count, StringBuilder rslt)
