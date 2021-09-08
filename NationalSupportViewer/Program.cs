@@ -140,7 +140,7 @@ namespace NationalSupportViewer
                                        $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n";
 
                             Console.WriteLine(text);
-                            result.Append(text);
+                            result.Append(text + "\n");
                         }
                     }
                 });
