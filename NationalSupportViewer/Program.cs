@@ -118,9 +118,9 @@ namespace NationalSupportViewer
         private static void LoadMulti(int count, StringBuilder zipNo)
         {
             var thr       = new Thread[CoreCount];
-            var pageCount = count / ItemPerPage;
-
-            var ttemp = (double)pageCount / CoreCount;
+            var pageCount = count             / ItemPerPage;
+            var ttemp     = (double)pageCount / CoreCount;
+            var zip       = zipNo.ToString();
 
             var result = new StringBuilder();
 
@@ -131,7 +131,7 @@ namespace NationalSupportViewer
                 {
                     for (int j = (int)(ttemp * i1) + 1; j < (int)(ttemp * (i1 + 1)) + 1; j++)
                     {
-                        var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{zipNo}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
+                        var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{zip}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
 
                         for (int k = 0; k < ItemPerPage; k++)
                         {
