@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -74,9 +73,9 @@ namespace NationalSupportViewer
             {
                 Console.Write("법정동코드 입력: ");
                 code = Console.ReadLine();
-            } while (code == null);
 
-            Console.WriteLine("\n");
+                Console.WriteLine("\n");
+            } while (code == null || !int.TryParse(code, out _));
 
             string zipNo = null;
 
