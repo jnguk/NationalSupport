@@ -9,7 +9,7 @@ namespace NationalSupportViewer
 {
     public static class Program
     {
-        private const int CoreCount   = 10;
+        private static readonly int CoreCount = Math.Max(1, Environment.ProcessorCount);
         private const int ItemPerPage = 10;
 
         //sido_sgg: 시군구
