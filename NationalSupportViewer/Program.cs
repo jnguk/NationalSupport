@@ -75,7 +75,7 @@ namespace NationalSupportViewer
                 code = Console.ReadLine();
 
                 Console.WriteLine("\n");
-            } while (code == null || !int.TryParse(code, out _));
+            } while (code == null || !double.TryParse(code, out _));
 
             string zipNo = null;
 
