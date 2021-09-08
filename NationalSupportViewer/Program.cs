@@ -133,17 +133,17 @@ namespace NationalSupportViewer
 
         private static void LoadMulti(int count, string zipCode)
         {
-            var thr = new Thread[CoreCount];
+            var threads = new Thread[CoreCount];
 
             var pageCount   = count / ItemPerPage;
             var pagePerCore = (double)pageCount / CoreCount;
 
             var result = new StringBuilder();
 
-            for (var i = 0; i < thr.Length; i++)
+            for (var i = 0; i < threads.Length; i++)
             {
                 var i1 = i;
-                thr[i] = new Thread(() =>
+                threads[i] = new Thread(() =>
                 {
                     for (int j = (int)(pagePerCore * i1) + 1; j < (int)(pagePerCore * (i1 + 1)) + 1; j++)
                     {
@@ -167,12 +167,12 @@ namespace NationalSupportViewer
                 });
             }
 
-            foreach (var thread in thr)
+            foreach (var thread in threads)
             {
                 thread.Start();
             }
 
-            foreach (var thread in thr)
+            foreach (var thread in threads)
             {
                 thread.Join();
             }
