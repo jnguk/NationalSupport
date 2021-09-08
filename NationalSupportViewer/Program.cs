@@ -18,43 +18,45 @@ namespace NationalSupportViewer
 
         private static string XmlHttpRequest(string url, string content)
         {
-            HttpWebRequest rq   = null;
+            HttpWebRequest req  = null;
             WebResponse    resp = null;
+
             try
             {
-                string returnVal;
-                var    param = Encoding.UTF8.GetBytes(content);
+                string retVal;
 
-                rq               = WebRequest.CreateHttp(url);
-                rq.UserAgent     = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36";
-                rq.Method        = "POST";
-                rq.ContentLength = param.Length;
-                rq.ContentType   = "application/json";
+                var param = Encoding.UTF8.GetBytes(content);
 
-                using (var s = rq.GetRequestStream())
+                req               = WebRequest.CreateHttp(url);
+                req.UserAgent     = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36";
+                req.Method        = "POST";
+                req.ContentLength = param.Length;
+                req.ContentType   = "application/json";
+
+                using (var reqStream = req.GetRequestStream())
                 {
-                    s.Write(param, 0, param.Length);
+                    reqStream.Write(param, 0, param.Length);
                 }
 
-                resp = rq.GetResponse();
-                using (var s = resp.GetResponseStream())
+                resp = req.GetResponse();
+                using (var respStream = resp.GetResponseStream())
                 {
-                    if (s == null) return null;
+                    if (respStream == null) return null;
 
                     int count;
                     var buffer = new byte[1024];
                     var bytes  = new List<byte>();
                     do
                     {
-                        count = s.Read(buffer, 0, buffer.Length);
+                        count = respStream.Read(buffer, 0, buffer.Length);
                         bytes.AddRange(buffer[..count]);
                     } while (count > 0);
 
                     var result = bytes.ToArray();
-                    returnVal = Encoding.UTF8.GetString(result, 0, result.Length);
+                    retVal = Encoding.UTF8.GetString(result, 0, result.Length);
                 }
 
-                return returnVal;
+                return retVal;
             }
             catch
             {
@@ -62,7 +64,7 @@ namespace NationalSupportViewer
             }
             finally
             {
-                rq?.Abort();
+                req?.Abort();
                 resp?.Close();
             }
         }
@@ -78,49 +80,57 @@ namespace NationalSupportViewer
                 Console.WriteLine("\n");
             } while (code == null || !double.TryParse(code, out _));
 
-            string zipNo = null;
+            string zipData = null;
 
             for (int i = 0; i < 5; i++)
             {
-                zipNo = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtZipNo.do", $"{{\"sido_sgg\":{code[0..5]},\"ldongCod\":{code[5..8]},\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":1,\"pageSet\":10}}");
+                zipData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtZipNo.do",
+                                         $"{{\"sido_sgg\":{code[..5]},"
+                                         + $"\"ldongCod\":{code[5..8]},"
+                                         + "\"zmap_ctgry_code\":\"00\","
+                                         + "\"mcht_nm\":\"\","
+                                         + "\"pageNo\":1,"
+                                         + "\"pageSet\":10}");
 
-                if (zipNo != null) break;
+                if (zipData != null) break;
             }
 
-            if (zipNo == null) return;
+            if (zipData == null) return;
 
-            var temp = zipNo.Split(":\"");
-            var zipn = new string[temp.Length];
-            for (int i = 1; i < zipn.Length; i++)
+            var temp = zipData.Split(":\"");
+            var zipCode = new string[temp.Length];
+            for (int i = 1; i < zipCode.Length; i++)
             {
-                zipn[i] = temp[i].Split('"')[0];
+                zipCode[i] = temp[i].Split('"')[0];
             }
 
-            var rslt = new StringBuilder();
+            var zipToStr = new StringBuilder();
 
-            rslt.Append('[');
+            zipToStr.Append('[');
 
-            for (var i = 1; i < zipn.Length; i++)
+            for (var i = 1; i < zipCode.Length; i++)
             {
-                rslt.Append("\\\"").Append(zipn[i]).Append("\\\"").Append(',');
+                zipToStr.Append("\\\"").Append(zipCode[i]).Append("\\\"").Append(',');
             }
 
-            rslt.Remove(rslt.Length - 1, 1);
-            rslt.Append(']');
+            zipToStr.Remove(zipToStr.Length - 1, 1);
+            zipToStr.Append(']');
 
-            var countData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtCnt.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\"}}");
-            var count     = int.Parse(countData);
+            var countData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtCnt.do",
+                                           $"{{\"zip_no\":\"{zipToStr}\","
+                                           + "\"zmap_ctgry_code\":\"00\","
+                                           + "\"mcht_nm\":\"\"}");
 
             //LoadSingle(count, rslt);
-            LoadMulti(count, rslt);
+            LoadMulti(int.Parse(countData), zipToStr.ToString());
         }
 
-        private static void LoadMulti(int count, StringBuilder zipNo)
+        private static void LoadMulti(int count, string zipCode)
         {
-            var thr       = new Thread[CoreCount];
-            var pageCount = count             / ItemPerPage;
-            var ttemp     = (double)pageCount / CoreCount;
-            var zip       = zipNo.ToString();
+            var thr = new Thread[CoreCount];
+
+            var pageCount   = count / ItemPerPage;
+            var pagePerCore = (double)pageCount / CoreCount;
 
             var result = new StringBuilder();
 
@@ -129,15 +139,20 @@ namespace NationalSupportViewer
                 var i1 = i;
                 thr[i] = new Thread(() =>
                 {
-                    for (int j = (int)(ttemp * i1) + 1; j < (int)(ttemp * (i1 + 1)) + 1; j++)
+                    for (int j = (int)(pagePerCore * i1) + 1; j < (int)(pagePerCore * (i1 + 1)) + 1; j++)
                     {
-                        var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{zip}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
+                        var data = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do",
+                                                  $"{{\"zip_no\":\"{zipCode}\","
+                                                  + "\"zmap_ctgry_code\":\"00\","
+                                                  + "\"mcht_nm\":\"\","
+                                                  + $"\"pageNo\":\"{j}\","
+                                                  + "\"pageSet\":\"10\"}");
 
-                        for (int k = 0; k < ItemPerPage; k++)
+                        for (int k = 1; k < ItemPerPage + 1; k++)
                         {
-                            var text = $"이름    : {tmp.Split("mcht_nm\":\"")[k     + 1].Split('"')[0]}\n" +
-                                       $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[k + 1].Split('"')[0]}\n" +
-                                       $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n";
+                            var text = $"이름    : {data.Split("mcht_nm\":\"")[k].Split('"')[0]}\n"
+                                     + $"카테고리: {data.Split("zmap_ctgry_nm\":\"")[k].Split('"')[0]}\n"
+                                     + $"주소    : {data.Split("mcht_addr\":\"")[k].Split('"')[0]}\n";
 
                             Console.WriteLine(text);
                             result.Append(text).Append("\n");
@@ -159,21 +174,21 @@ namespace NationalSupportViewer
             File.WriteAllText("result.txt", result.ToString());
         }
 
-        private static void LoadSingle(int count, StringBuilder rslt)
-        {
-            var pageCount = count / ItemPerPage;
+        //private static void LoadSingle(int count, StringBuilder rslt)
+        //{
+        //    var pageCount = count / ItemPerPage;
 
-            for (int j = 1; j < pageCount; j++)
-            {
-                var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
+        //    for (int j = 1; j < pageCount; j++)
+        //    {
+        //        var tmp = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtInfo.do", $"{{\"zip_no\":\"{rslt}\",\"zmap_ctgry_code\":\"00\",\"mcht_nm\":\"\",\"pageNo\":\"{j}\",\"pageSet\":\"10\"}}");
 
-                for (int k = 0; k < ItemPerPage; k++)
-                {
-                    Console.WriteLine($"이름    : {tmp.Split("mcht_nm\":\"")[k     + 1].Split('"')[0]}\n" +
-                                      $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[k + 1].Split('"')[0]}\n" +
-                                      $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n");
-                }
-            }
-        }
+        //        for (int k = 0; k < ItemPerPage; k++)
+        //        {
+        //            Console.WriteLine($"이름    : {tmp.Split("mcht_nm\":\"")[k     + 1].Split('"')[0]}\n" +
+        //                              $"카테고리: {tmp.Split("zmap_ctgry_nm\":\"")[k + 1].Split('"')[0]}\n" +
+        //                              $"주소    : {tmp.Split("mcht_addr\":\"")[k   + 1].Split('"')[0]}\n");
+        //        }
+        //    }
+        //}
     }
 }
