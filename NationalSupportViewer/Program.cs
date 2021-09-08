@@ -71,22 +71,34 @@ namespace NationalSupportViewer
 
         private static void Main()
         {
-            string code;
+            string legalLocalCode;
             do
             {
                 Console.Write("법정동코드 입력: ");
-                code = Console.ReadLine();
+                legalLocalCode = Console.ReadLine();
 
                 Console.WriteLine("\n");
-            } while (code == null || !double.TryParse(code, out _));
+            } while (legalLocalCode == null || !double.TryParse(legalLocalCode, out _));
 
+            var zipCode = GetZipData(legalLocalCode);
+            var countData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtCnt.do",
+                                           $"{{\"zip_no\":\"{zipCode}\","
+                                           + "\"zmap_ctgry_code\":\"00\","
+                                           + "\"mcht_nm\":\"\"}");
+
+            //LoadSingle(count, rslt);
+            LoadMulti(int.Parse(countData), zipCode);
+        }
+
+        private static string GetZipData(string bjdCode)
+        {
             string zipData = null;
 
             for (int i = 0; i < 5; i++)
             {
                 zipData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtZipNo.do",
-                                         $"{{\"sido_sgg\":{code[..5]},"
-                                         + $"\"ldongCod\":{code[5..8]},"
+                                         $"{{\"sido_sgg\":{bjdCode[..5]},"
+                                         + $"\"ldongCod\":{bjdCode[5..8]},"
                                          + "\"zmap_ctgry_code\":\"00\","
                                          + "\"mcht_nm\":\"\","
                                          + "\"pageNo\":1,"
@@ -95,9 +107,9 @@ namespace NationalSupportViewer
                 if (zipData != null) break;
             }
 
-            if (zipData == null) return;
+            if (zipData == null) return null;
 
-            var temp = zipData.Split(":\"");
+            var temp    = zipData.Split(":\"");
             var zipCode = new string[temp.Length];
             for (int i = 1; i < zipCode.Length; i++)
             {
@@ -116,13 +128,7 @@ namespace NationalSupportViewer
             zipToStr.Remove(zipToStr.Length - 1, 1);
             zipToStr.Append(']');
 
-            var countData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtCnt.do",
-                                           $"{{\"zip_no\":\"{zipToStr}\","
-                                           + "\"zmap_ctgry_code\":\"00\","
-                                           + "\"mcht_nm\":\"\"}");
-
-            //LoadSingle(count, rslt);
-            LoadMulti(int.Parse(countData), zipToStr.ToString());
+            return zipToStr.ToString();
         }
 
         private static void LoadMulti(int count, string zipCode)
