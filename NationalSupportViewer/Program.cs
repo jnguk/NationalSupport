@@ -103,15 +103,15 @@ namespace NationalSupportViewer
             LoadMulti(int.Parse(countData), zipCode);
         }
 
-        private static string GetZipData(string bjdCode)
+        private static string GetZipData(string legalLocalCode)
         {
             string zipData = null;
 
             for (int i = 0; i < 5; i++)
             {
                 zipData = XmlHttpRequest("https://xn--3e0bnl907agre90ivg11qswg.kr/whereToUse/getMchtZipNo.do",
-                                         $"{{\"sido_sgg\":{bjdCode[..5]},"
-                                         + $"\"ldongCod\":{bjdCode[5..8]},"
+                                         $"{{\"sido_sgg\":{legalLocalCode[..5]},"
+                                         + $"\"ldongCod\":{legalLocalCode[5..8]},"
                                          + "\"zmap_ctgry_code\":\"00\","
                                          + "\"mcht_nm\":\"\","
                                          + "\"pageNo\":1,"
