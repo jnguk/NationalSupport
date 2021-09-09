@@ -171,10 +171,10 @@ namespace NationalSupportViewer
                         {
                             var text = $"이름    : {data.Split("mcht_nm\":\"")[k].Split('"')[0]}\n"
                                      + $"카테고리: {data.Split("zmap_ctgry_nm\":\"")[k].Split('"')[0]}\n"
-                                     + $"주소    : {data.Split("mcht_addr\":\"")[k].Split('"')[0]}\n";
+                                     + $"주소    : {data.Split("mcht_addr\":\"")[k].Split('"')[0]}\n\n";
 
                             Console.WriteLine(text);
-                            result.Append(text).Append("\n");
+                            result.Append(text);
                         }
                     }
                 });
