@@ -74,7 +74,7 @@ namespace NationalSupportViewer
             string legalLocalCode;
             do
             {
-                Console.Write("법정동코드 입력: ");
+                Console.Write("(도로명 기준)법정동코드 입력: ");
                 legalLocalCode = Console.ReadLine();
 
                 Console.WriteLine("\n");
